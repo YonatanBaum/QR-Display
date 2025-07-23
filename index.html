@@ -11,6 +11,8 @@
     }
     #qr-list {
       margin-top: 2em;
+      position: relative;
+      min-height: 200px;
     }
     .qr-item {
       display: inline-block;
@@ -33,6 +35,7 @@
     <button type="button" id="toggle-advanced">Advanced Options</button>
     <br><input type="text" id="display-text-input" placeholder="Display text (optional)" size="40" style="margin-top:0.5em;">
     <br><button type="button" id="hide-form-btn" style="margin-top:0.5em;">Hide Form</button>
+    <br><label><input type="checkbox" id="free-transform-checkbox" style="margin-top:0.5em;"> Free Transform</label>
     <div id="advanced-options" style="display:none; margin-top:1em; border:1px solid #ccc; padding:1em; background:#fafafa;">
       <h4 style="margin-top:0;">Advanced Options</h4>
       <div style="display:flex; flex-wrap:wrap; gap:1em;">
@@ -157,6 +160,72 @@
       }
     };
 
+    // Free Transform logic
+    const freeTransformCheckbox = document.getElementById('free-transform-checkbox');
+    function setQrDraggable(draggable) {
+      const container = document.getElementById('qr-list');
+      const items = Array.from(document.querySelectorAll('.qr-item'));
+      // First, record all positions
+      const positions = items.map(item => ({
+        item,
+        left: item.offsetLeft,
+        top: item.offsetTop,
+        width: item.offsetWidth,
+        height: item.offsetHeight
+      }));
+      // Then, apply styles
+      items.forEach((item, i) => {
+        if (draggable) {
+          if (item.style.position !== 'absolute') {
+            const pos = positions[i];
+            item.style.width = pos.width + 'px';
+            item.style.height = pos.height + 'px';
+            item.style.left = pos.left + 'px';
+            item.style.top = pos.top + 'px';
+            item.style.zIndex = 10;
+            item.style.pointerEvents = 'auto';
+          }
+          item.style.position = 'absolute';
+          item.style.cursor = 'move';
+          item.onmousedown = dragMouseDown;
+        } else {
+          item.style.position = '';
+          item.style.left = '';
+          item.style.top = '';
+          item.style.width = '';
+          item.style.height = '';
+          item.style.zIndex = '';
+          item.style.pointerEvents = '';
+          item.style.cursor = '';
+          item.onmousedown = null;
+        }
+      });
+    }
+
+    freeTransformCheckbox.onchange = function() {
+      setQrDraggable(this.checked);
+    };
+
+    // Drag logic
+    let dragTarget = null, offsetX = 0, offsetY = 0;
+    function dragMouseDown(e) {
+      dragTarget = this;
+      offsetX = e.clientX - dragTarget.offsetLeft;
+      offsetY = e.clientY - dragTarget.offsetTop;
+      document.onmousemove = dragMouseMove;
+      document.onmouseup = dragMouseUp;
+    }
+    function dragMouseMove(e) {
+      if (!dragTarget) return;
+      dragTarget.style.left = (e.clientX - offsetX) + 'px';
+      dragTarget.style.top = (e.clientY - offsetY) + 'px';
+    }
+    function dragMouseUp() {
+      dragTarget = null;
+      document.onmousemove = null;
+      document.onmouseup = null;
+    }
+
 
     function getAdvancedOptions() {
       // Gather all advanced options from the form
@@ -247,6 +316,10 @@
         data: url
       });
       qrCode.append(qrContainer);
+      // If free transform is enabled, make this QR draggable
+      if (freeTransformCheckbox.checked) {
+        setQrDraggable(true);
+      }
     }
   </script>
 </body>
