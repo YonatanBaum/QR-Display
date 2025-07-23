@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QR Code Generator</title>
+  <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 2em;
+    }
+    #qr-list {
+      margin-top: 2em;
+    }
+    .qr-item {
+      display: inline-block;
+      margin: 0.5em;
+      vertical-align: top;
+      text-align: center;
+    }
+    .qr-url {
+      font-size: 0.9em;
+      margin-top: 0.3em;
+      word-break: break-all;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <form id="url-form" autocomplete="off">
+    <input type="text" id="url-input" placeholder="Enter URL" size="40" required />
+    <button type="submit">Add</button>
+    <button type="button" id="toggle-advanced">Advanced Options</button>
+    <br><input type="text" id="display-text-input" placeholder="Display text (optional)" size="40" style="margin-top:0.5em;">
+    <br><button type="button" id="hide-form-btn" style="margin-top:0.5em;">Hide Form</button>
+    <div id="advanced-options" style="display:none; margin-top:1em; border:1px solid #ccc; padding:1em; background:#fafafa;">
+      <h4 style="margin-top:0;">Advanced Options</h4>
+      <div style="display:flex; flex-wrap:wrap; gap:1em;">
+        <div>
+          <label>Width: <input type="number" id="opt-width" value="150" min="50" max="1000" style="width:4em;"></label><br>
+          <label>Height: <input type="number" id="opt-height" value="150" min="50" max="1000" style="width:4em;"></label><br>
+          <label>Margin: <input type="number" id="opt-margin" value="4" min="0" max="100" style="width:4em;"></label>
+        </div>
+        <div>
+          <label>Type:
+            <select id="opt-type">
+              <option value="canvas">Canvas</option>
+              <option value="svg">SVG (unstable)</option>
+            </select>
+          </label><br>
+          <label>QR Type Number: <input type="number" id="opt-type-number" value="0" min="0" max="40" style="width:4em;"></label><br>
+          <label>Error Correction:
+            <select id="opt-ecc">
+              <option value="L">L</option>
+              <option value="M">M</option>
+              <option value="Q" selected>Q</option>
+              <option value="H">H</option>
+            </select>
+          </label><br>
+          <label>Mode:
+            <select id="opt-mode">
+              <option value="">Auto</option>
+              <option value="Numeric">Numeric</option>
+              <option value="Alphanumeric">Alphanumeric</option>
+              <option value="Byte">Byte</option>
+              <option value="Kanji">Kanji</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>Dots Style:
+            <select id="opt-dots-type">
+              <option value="square">Square</option>
+              <option value="rounded">Rounded</option>
+              <option value="dots">Dots</option>
+              <option value="classy">Classy</option>
+              <option value="classy-rounded">Classy Rounded</option>
+              <option value="extra-rounded">Extra Rounded</option>
+            </select>
+          </label><br>
+          <label>Dots Color: <input type="color" id="opt-dots-color" value="#222222"></label>
+        </div>
+        <div>
+          <label>Background Color: <input type="color" id="opt-bg-color" value="#ffffff"></label><br>
+          <label>Use BG Gradient: <input type="checkbox" id="opt-bg-gradient"></label><br>
+          <div id="bg-gradient-fields" style="display:none;">
+            <label>Type:
+              <select id="opt-bg-gradient-type">
+                <option value="linear">Linear</option>
+                <option value="radial">Radial</option>
+              </select>
+            </label><br>
+            <label>Color 1: <input type="color" id="opt-bg-grad1" value="#ffffff"></label><br>
+            <label>Color 2: <input type="color" id="opt-bg-grad2" value="#cccccc"></label><br>
+            <label>Rotation (rad): <input type="number" id="opt-bg-grad-rot" value="0" step="0.1"></label>
+          </div>
+        </div>
+        <div>
+          <label>Image URL (center):<br><input type="text" id="opt-image" placeholder="https://..." style="width:12em;"></label><br>
+          <label>Image Size (0-1): <input type="number" id="opt-image-size" value="0.4" min="0" max="1" step="0.01" style="width:4em;"></label><br>
+          <label>Image Margin: <input type="number" id="opt-image-margin" value="0" min="0" max="100" style="width:4em;"></label><br>
+          <label>Hide BG Dots: <input type="checkbox" id="opt-image-hidebg" checked></label>
+        </div>
+        <div>
+          <label>Corners Square Style:
+            <select id="opt-csq-type">
+              <option value="square">Square</option>
+              <option value="dot">Dot</option>
+              <option value="extra-rounded">Extra Rounded</option>
+            </select>
+          </label><br>
+          <label>Corners Square Color: <input type="color" id="opt-csq-color" value="#222222"></label>
+        </div>
+        <div>
+          <label>Corners Dot Style:
+            <select id="opt-cdot-type">
+              <option value="square">Square</option>
+              <option value="dot">Dot</option>
+            </select>
+          </label><br>
+          <label>Corners Dot Color: <input type="color" id="opt-cdot-color" value="#222222"></label>
+        </div>
+      </div>
+    </div>
+  </form>
+  <div id="qr-list"></div>
+  <script>
+    const form = document.getElementById('url-form');
+    const input = document.getElementById('url-input');
+    const qrList = document.getElementById('qr-list');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const url = input.value.trim();
+      const displayTextInput = document.getElementById('display-text-input');
+      const displayText = displayTextInput.value.trim();
+      if (!url) return;
+      addQr(url, displayText);
+      input.value = '';
+      displayTextInput.value = '';
+      input.focus();
+    });
+
+    document.getElementById('toggle-advanced').onclick = function() {
+      const adv = document.getElementById('advanced-options');
+      adv.style.display = adv.style.display === 'none' ? 'block' : 'none';
+    };
+    document.getElementById('opt-bg-gradient').onchange = function() {
+      document.getElementById('bg-gradient-fields').style.display = this.checked ? 'block' : 'none';
+    };
+
+    // Hide form button
+    document.getElementById('hide-form-btn').onclick = function() {
+      if(confirm('Are you sure? This cannot be undone.')) {
+        form.style.display = 'none';
+        document.getElementById('show-form-btn').style.display = 'inline-block';
+      }
+    };
+
+
+    function getAdvancedOptions() {
+      // Gather all advanced options from the form
+      const width = parseInt(document.getElementById('opt-width').value) || 150;
+      const height = parseInt(document.getElementById('opt-height').value) || 150;
+      const margin = parseInt(document.getElementById('opt-margin').value) || 4;
+      const type = document.getElementById('opt-type').value;
+      const typeNumber = parseInt(document.getElementById('opt-type-number').value) || 0;
+      const errorCorrectionLevel = document.getElementById('opt-ecc').value;
+      const mode = document.getElementById('opt-mode').value;
+      const dotsType = document.getElementById('opt-dots-type').value;
+      const dotsColor = document.getElementById('opt-dots-color').value;
+      const bgColor = document.getElementById('opt-bg-color').value;
+      const useBgGradient = document.getElementById('opt-bg-gradient').checked;
+      const bgGradientType = document.getElementById('opt-bg-gradient-type').value;
+      const bgGrad1 = document.getElementById('opt-bg-grad1').value;
+      const bgGrad2 = document.getElementById('opt-bg-grad2').value;
+      const bgGradRot = parseFloat(document.getElementById('opt-bg-grad-rot').value) || 0;
+      const image = document.getElementById('opt-image').value.trim();
+      const imageSize = parseFloat(document.getElementById('opt-image-size').value) || 0.4;
+      const imageMargin = parseInt(document.getElementById('opt-image-margin').value) || 0;
+      const hideBgDots = document.getElementById('opt-image-hidebg').checked;
+      const csqType = document.getElementById('opt-csq-type').value;
+      const csqColor = document.getElementById('opt-csq-color').value;
+      const cdotType = document.getElementById('opt-cdot-type').value;
+      const cdotColor = document.getElementById('opt-cdot-color').value;
+      // Compose options object
+      const options = {
+        width,
+        height,
+        type,
+        margin,
+        qrOptions: {
+          errorCorrectionLevel,
+          typeNumber
+        },
+        dotsOptions: {
+          color: dotsColor,
+          type: dotsType
+        },
+        backgroundOptions: useBgGradient ? {
+          gradient: {
+            type: bgGradientType,
+            rotation: bgGradRot,
+            colorStops: [
+              { offset: 0, color: bgGrad1 },
+              { offset: 1, color: bgGrad2 }
+            ]
+          }
+        } : {
+          color: bgColor
+        },
+        cornersSquareOptions: {
+          color: csqColor,
+          type: csqType
+        },
+        cornersDotOptions: {
+          color: cdotColor,
+          type: cdotType
+        },
+        ...(image ? {
+          image,
+          imageOptions: {
+            imageSize,
+            margin: imageMargin,
+            hideBackgroundDots: hideBgDots,
+            crossOrigin: 'anonymous'
+          }
+        } : {})
+      };
+      if (mode) options.qrOptions.mode = mode;
+      return options;
+    }
+
+    function addQr(url, displayText) {
+      const qrDiv = document.createElement('div');
+      qrDiv.className = 'qr-item';
+      const qrContainer = document.createElement('div');
+      qrDiv.appendChild(qrContainer);
+      const label = document.createElement('div');
+      label.className = 'qr-url';
+      label.textContent = displayText || url;
+      qrDiv.appendChild(label);
+      qrList.appendChild(qrDiv);
+      const adv = getAdvancedOptions();
+      const qrCode = new QRCodeStyling({
+        ...adv,
+        data: url
+      });
+      qrCode.append(qrContainer);
+    }
+  </script>
+</body>
+</html> 
